@@ -1,20 +1,24 @@
-import React from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
-import JournalScreen from "./Screens/JournalScreen";
-import AddEntryScreen from "./Screens/AddEntryScreen";
+import NotesListScreen from "./Screens/NoteListScreen";
+import AddNoteScreen from "./Screens/AddNoteScreen";
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="JournalMain"
-        screenOptions={{ headerShown: false }}
-      >
-        <Stack.Screen name="JournalMain" component={JournalScreen} />
-        <Stack.Screen name="AddEntry" component={AddEntryScreen} />
+      <Stack.Navigator initialRouteName="NotesList">
+        <Stack.Screen
+          name="NotesList"
+          component={NotesListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AddNote"
+          component={AddNoteScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
