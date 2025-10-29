@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { styles } from "../Styles";
+import { useTheme } from "../Services/ThemeContext";
 
 export default function AddNoteScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const { themeColor } = useTheme(); // 👈 color del tema
 
   const handleSave = () => {
     if (!title || !description) {
@@ -17,26 +19,31 @@ export default function AddNoteScreen({ navigation }) {
 
   return (
     <View style={styles.addEntryContainer}>
-      <Text style={styles.addEntryTitle}>Nueva Nota</Text>
+      {/* 👇 título usa color del tema */}
+      <Text style={[styles.addEntryTitle, { color: themeColor }]}>Nueva Nota</Text>
 
-      <Text>Título:</Text>
+      <Text style={{ color: themeColor }}>Título:</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: themeColor, borderWidth: 1 }]}
         placeholder="Escribe un título"
         value={title}
         onChangeText={setTitle}
       />
 
-      <Text>Descripción:</Text>
+      <Text style={{ color: themeColor }}>Descripción:</Text>
       <TextInput
-        style={styles.contentInput}
+        style={[styles.contentInput, { borderColor: themeColor, borderWidth: 1 }]}
         placeholder="Escribe la descripción"
         multiline
         value={description}
         onChangeText={setDescription}
       />
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+      {/* 👇 botón principal usa color dinámico */}
+      <TouchableOpacity
+        style={[styles.saveButton, { backgroundColor: themeColor }]}
+        onPress={handleSave}
+      >
         <Text style={styles.saveButtonText}>Guardar Nota</Text>
       </TouchableOpacity>
     </View>

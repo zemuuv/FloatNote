@@ -10,11 +10,13 @@ import { ref, set } from "firebase/database";
 import { db } from "../Services/Conexion_BD";
 import { Image } from "react-native";
 import logo from "../assets/Logo.png";
+import { useTheme } from "../Services/ThemeContext";
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const { themeColor } = useTheme();
 
   const handleRegister = async () => {
     if (!email || !username || !password) {

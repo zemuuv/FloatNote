@@ -4,10 +4,12 @@ import { db } from "../Services/Conexion_BD";
 import { ref, get, child } from "firebase/database";
 import { Image } from "react-native";
 import logo from "../assets/Logo.png";
+import { useTheme } from "../Services/ThemeContext";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { themeColor } = useTheme();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -25,7 +27,7 @@ export default function LoginScreen({ navigation }) {
         const userData = snapshot.val();
         if (userData.password === password) {
           alert(`Bienvenido ${userData.username}`);
-          navigation.navigate("NotesList"); 
+          navigation.navigate("MainTabs");
         } else {
           alert("Contraseña incorrecta");
         }
