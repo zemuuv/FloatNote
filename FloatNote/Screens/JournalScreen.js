@@ -1,32 +1,74 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, FlatList, TouchableOpacity, Modal } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  TouchableWithoutFeedback,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "../Styles";
 import { useTheme } from "../Services/ThemeContext";
 
+// 🔥 Firebase
+import { db } from "../Services/Conexion_BD";
+import { ref, onValue, remove } from "firebase/database";
+
 export default function JournalScreen({ navigation }) {
   const [entries, setEntries] = useState([]);
   const [selectedEntry, setSelectedEntry] = useState(null);
-  const { themeColor } = useTheme(); // 🎨 Tema activo
+  const [modalVisible, setModalVisible] = useState(false);
+  const { themeColor } = useTheme();
 
-  // Recibir nueva entrada desde AddEntryScreen
+  // 🔥 LEER ENTRADAS DE FIREBASE EN TIEMPO REAL
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      const route = navigation
-        .getState()
-        .routes.find((r) => r.params?.newEntry);
-      if (route?.params?.newEntry) {
-        setEntries((prev) => [...prev, route.params.newEntry]);
-        route.params.newEntry = null; // limpiar
+    const entriesRef = ref(db, "journalEntries");
+
+    const unsubscribe = onValue(entriesRef, (snapshot) => {
+      const data = snapshot.val();
+
+      if (data) {
+        const parsed = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+
+        parsed.sort((a, b) => b.timestamp - a.timestamp);
+
+        setEntries(parsed);
+      } else {
+        setEntries([]);
       }
     });
-    return unsubscribe;
-  }, [navigation]);
 
+    return () => unsubscribe();
+  }, []);
+
+  // 👁 ABRIR MODAL
+  const openEntryModal = (entry) => {
+    setSelectedEntry(entry);
+    setModalVisible(true);
+  };
+
+  // 🗑 ELIMINAR ENTRADA
+  const handleDeleteEntry = async () => {
+    if (!selectedEntry?.id) return;
+
+    try {
+      await remove(ref(db, `journalEntries/${selectedEntry.id}`));
+      setModalVisible(false);
+      setSelectedEntry(null);
+    } catch (error) {
+      console.log("Error eliminando entry:", error);
+    }
+  };
+
+  // 🎨 Tarjeta individual
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={[styles.entryCard, { borderColor: themeColor, borderWidth: 1.5 }]}
-      onPress={() => setSelectedEntry(item)}
+      onPress={() => openEntryModal(item)}
     >
       <Text style={[styles.entryCardDate, { color: themeColor }]}>
         {item.date}
@@ -45,17 +87,17 @@ export default function JournalScreen({ navigation }) {
         ]}
       >
         <Ionicons name="options-outline" size={24} color={themeColor} />
+
         <Text style={[styles.journalHeaderTitle, { color: themeColor }]}>
           Journal
         </Text>
 
-        {/* BOTÓN PARA AGREGAR ENTRADA */}
         <TouchableOpacity onPress={() => navigation.navigate("AddEntry")}>
           <Ionicons name="create-outline" size={26} color={themeColor} />
         </TouchableOpacity>
       </View>
 
-      {/* GRID DE ENTRADAS */}
+      {/* GRID */}
       {entries.length === 0 ? (
         <Text style={[styles.noEntriesText, { color: "#777" }]}>
           No hay entradas aún.
@@ -64,32 +106,75 @@ export default function JournalScreen({ navigation }) {
         <FlatList
           data={entries}
           renderItem={renderItem}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(item) => item.id}
           numColumns={2}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* MODAL PARA MOSTRAR EL CONTENIDO */}
-      <Modal visible={!!selectedEntry} transparent animationType="fade">
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { borderColor: themeColor }]}>
-            <Text style={[styles.modalTitle, { color: themeColor }]}>
-              {selectedEntry?.title}
-            </Text>
-            <Text style={[styles.modalDate, { color: themeColor }]}>
-              {selectedEntry?.date}
-            </Text>
-            <Text style={styles.modalText}>{selectedEntry?.content}</Text>
+      {/* ⭐ MODAL */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.modalContent, { borderColor: themeColor }]}>
+                <Text style={[styles.modalTitle, { color: themeColor }]}>
+                  {selectedEntry?.title}
+                </Text>
 
-            <TouchableOpacity
-              onPress={() => setSelectedEntry(null)}
-              style={[styles.modalClose, { backgroundColor: themeColor }]}
-            >
-              <Text style={styles.modalCloseText}>Cerrar</Text>
-            </TouchableOpacity>
+                <Text style={[styles.modalDate, { color: themeColor }]}>
+                  {selectedEntry?.date}
+                </Text>
+
+                <Text style={styles.modalText}>{selectedEntry?.content}</Text>
+
+                {/* BOTONES */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    marginTop: 25,
+                  }}
+                >
+                  {/* ❌ Eliminar */}
+                  <TouchableOpacity
+                    onPress={handleDeleteEntry}
+                    style={{
+                      backgroundColor: "red",
+                      paddingVertical: 8,
+                      paddingHorizontal: 20,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                      Eliminar
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Cerrar */}
+                  <TouchableOpacity
+                    onPress={() => setModalVisible(false)}
+                    style={{
+                      backgroundColor: themeColor,
+                      paddingVertical: 8,
+                      paddingHorizontal: 20,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                      Cerrar
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

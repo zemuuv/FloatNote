@@ -4,32 +4,50 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { styles } from "../Styles";
 import { useTheme } from "../Services/ThemeContext";
 
+import { db } from "../Services/Conexion_BD";
+import { push, ref } from "firebase/database";
+
 export default function AddEntryScreen({ navigation }) {
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const { themeColor } = useTheme(); // 👈 color dinámico
+  const { themeColor } = useTheme();
 
-  const handleAdd = () => {
-    const formattedDate = date.toLocaleDateString("en-US", {
+  const handleAdd = async () => {
+    if (!title || !content) {
+      return alert("Completa todos los campos");
+    }
+
+    const formattedDate = date.toLocaleDateString("es-ES", {
+      year: "numeric",
       month: "long",
       day: "numeric",
     });
-    if (!title) return alert("Completa todos los campos");
-    const newEntry = { date: formattedDate, title, content };
-    navigation.navigate("JournalMain", { newEntry });
+
+    try {
+      await push(ref(db, "journalEntries"), {
+        date: formattedDate,
+        timestamp: Date.now(),
+        title: title,
+        content: content,
+      });
+
+      alert("Entrada guardada correctamente");
+      navigation.navigate("JournalMain");
+    } catch (error) {
+      console.error("❌ Error guardando:", error);
+      alert("Hubo un error al guardar la entrada.");
+    }
   };
 
   const onChangeDate = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
     setShowPicker(false);
-    setDate(currentDate);
+    setDate(selectedDate || date);
   };
 
   return (
     <View style={styles.addEntryContainer}>
-      {/* 👇 el título ahora usa el color del tema */}
       <Text style={[styles.addEntryTitle, { color: themeColor }]}>
         Nueva entrada
       </Text>
@@ -80,7 +98,6 @@ export default function AddEntryScreen({ navigation }) {
         style={[styles.contentInput, { borderColor: themeColor, borderWidth: 1 }]}
       />
 
-      {/* 👇 botón principal usa el color dinámico */}
       <TouchableOpacity
         onPress={handleAdd}
         style={[styles.saveButton, { backgroundColor: themeColor }]}

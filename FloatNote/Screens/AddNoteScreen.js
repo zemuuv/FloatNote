@@ -2,24 +2,46 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { styles } from "../Styles";
 import { useTheme } from "../Services/ThemeContext";
+import { db } from "../Services/Conexion_BD";
+import { ref, push, set } from "firebase/database";
 
 export default function AddNoteScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const { themeColor } = useTheme(); // 👈 color del tema
+  const { themeColor } = useTheme();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title || !description) {
       alert("Completa todos los campos");
       return;
     }
-    const newNote = { title, description };
-    navigation.navigate("NotesList", { newNote });
+
+    try {
+      // 👇 referencia al nodo "notes"
+      const notesRef = ref(db, "notes");
+
+      // 👇 genera ID automático y agrega la nota
+      const newNoteRef = push(notesRef);
+
+      await set(newNoteRef, {
+        title: title,
+        description: description,
+        createdAt: new Date().toISOString(),
+      });
+
+      alert("Nota guardada correctamente");
+
+      // regresar a la lista
+      navigation.navigate("NotesList");
+
+    } catch (error) {
+      console.error("Error guardando nota:", error);
+      alert("Hubo un error al guardar");
+    }
   };
 
   return (
     <View style={styles.addEntryContainer}>
-      {/* 👇 título usa color del tema */}
       <Text style={[styles.addEntryTitle, { color: themeColor }]}>Nueva Nota</Text>
 
       <Text style={{ color: themeColor }}>Título:</Text>
@@ -39,7 +61,6 @@ export default function AddNoteScreen({ navigation }) {
         onChangeText={setDescription}
       />
 
-      {/* 👇 botón principal usa color dinámico */}
       <TouchableOpacity
         style={[styles.saveButton, { backgroundColor: themeColor }]}
         onPress={handleSave}

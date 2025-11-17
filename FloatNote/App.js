@@ -6,6 +6,7 @@ import AddNoteScreen from "./Screens/AddNoteScreen";
 import RegisterScreen from "./Screens/RegisterScreen";
 import LoginScreen from "./Screens/LoginScreen";
 import PerfilScreen from "./Screens/PerfilScreen";
+import RemindersScreen from "./Screens/RemindersScreen";
 import { Ionicons } from "@expo/vector-icons";
 import { ThemeProvider, useTheme } from "./Services/ThemeContext";
 import JournalScreen from "./Screens/JournalScreen";
@@ -24,6 +25,16 @@ function NotesStack() {
     </Stack.Navigator>
   );
 }
+
+/*📘 Subnavegador para la sección de recordatorios */ 
+function RemindersStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="RemindersMain" component={RemindersScreen} />
+    </Stack.Navigator>
+  );
+}
+
 
 /* 📘 Subnavegador para la sección de Diario / Calendario */
 function JournalStack() {
@@ -46,7 +57,8 @@ function Tabs() {
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === "Notas") iconName = "checkmark-circle";
-          else if (route.name === "Calendario") iconName = "calendar";
+          else if (route.name === "Reminders") iconName = "alert-circle";
+          else if (route.name === "Journal") iconName = "calendar";
           else if (route.name === "Perfil") iconName = "person";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -55,7 +67,8 @@ function Tabs() {
       })}
     >
       <Tab.Screen name="Notas" component={NotesStack} />
-      <Tab.Screen name="Calendario" component={JournalStack} />
+      <Tab.Screen name="Reminders" component={RemindersStack} />
+      <Tab.Screen name="Journal" component={JournalStack} />      
       <Tab.Screen name="Perfil" component={PerfilScreen} />
     </Tab.Navigator>
   );
