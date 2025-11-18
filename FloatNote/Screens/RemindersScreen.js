@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,186 +6,277 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  Modal,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Icon from "react-native-vector-icons/Ionicons";
+import { getDatabase, ref, onValue, remove } from "firebase/database";
+import { useTheme } from "../Services/ThemeContext"; // ⭐ IMPORTANTE
 
-export default function RemindersScreen() {
+export default function RemindersScreen({ navigation }) {
+  const [reminders, setReminders] = useState([]);
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
 
-  // 📌 Datos de ejemplo (puedes reemplazar con Firebase)
-  const reminders = [
-    { id: "1", day: 4, month: "June", title: "Mari's Birthday", subtitle: "18" },
-    { id: "2", day: 8, month: "June", title: "Superbowl", subtitle: "18" },
-    { id: "3", day: 17, month: "June", title: "Concert", subtitle: "18" },
-    { id: "4", day: 25, month: "June", title: "Aniversary", subtitle: "18" },
-  ];
+  const { themeColor } = useTheme(); // ⭐ COLOR DEL TEMA
+
+  useEffect(() => {
+    const db = getDatabase();
+    const remindersRef = ref(db, "reminders/");
+
+    const unsubscribe = onValue(remindersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const parsed = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setReminders(parsed);
+      } else {
+        setReminders([]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const filtered = reminders.filter((r) =>
+    r.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const groupByMonth = filtered.reduce((acc, item) => {
+    acc[item.month] = acc[item.month] || [];
+    acc[item.month].push(item);
+    return acc;
+  }, {});
+
+  const handleComplete = async (id) => {
+    try {
+      const db = getDatabase();
+      await remove(ref(db, `reminders/${id}`));
+    } catch (error) {
+      console.log("Error eliminando:", error);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      {/* HEADER */}
+    <View style={[styles.container, { backgroundColor: "#fff" }]}>
+      
+      {/* ---------- MODAL ---------- */}
+      <Modal visible={!!selected} transparent animationType="slide">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalBox}>
+            {selected && (
+              <>
+                <Text style={[styles.modalTitle, { color: themeColor }]}>
+                  {selected.title}
+                </Text>
+                <Text style={styles.modalText}>{selected.note}</Text>
+                <Text style={[styles.modalDate, { color: themeColor }]}>
+                  {selected.day} / {selected.month} / {selected.year}
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.closeBtn, { backgroundColor: themeColor }]}
+                  onPress={() => setSelected(null)}
+                >
+                  <Text style={styles.closeText}>Cerrar</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ---------- HEADER ---------- */}
       <View style={styles.header}>
-        <Text style={styles.editText}>Edit</Text>
-        <Text style={styles.headerTitle}>Reminders</Text>
-        <Ionicons name="pencil-outline" size={22} color="#5A2010" />
+        <TouchableOpacity>
+          <Text style={[styles.editText, { color: themeColor }]}>Edit</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.title, { color: themeColor }]}>Reminders</Text>
+
+        <TouchableOpacity onPress={() => navigation.navigate("AddReminder")}>
+          <Icon name="create-outline" size={28} color={themeColor} />
+        </TouchableOpacity>
       </View>
 
-      {/* SEARCH BAR */}
+      {/* ---------- SEARCH ---------- */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#999" style={{ marginLeft: 10 }} />
+        <Icon
+          name="search-outline"
+          size={20}
+          color="#999"
+          style={{ marginLeft: 10 }}
+        />
         <TextInput
-          placeholder="Search"
-          placeholderTextColor="#999"
           style={styles.searchInput}
+          placeholder="Search"
           value={search}
           onChangeText={setSearch}
         />
       </View>
 
-      {/* MONTH TITLE */}
-      <Text style={styles.monthText}>June</Text>
-
-      {/* LISTA */}
+      {/* ---------- LISTA AGRUPADA ---------- */}
       <FlatList
-        data={reminders}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        renderItem={({ item }) => (
-          <View style={styles.itemContainer}>
-            {/* CÍRCULO DÍA */}
-            <View style={styles.dayCircle}>
-              <Text style={styles.dayText}>{item.day}</Text>
-            </View>
+        data={Object.keys(groupByMonth)}
+        keyExtractor={(item) => item}
+        renderItem={({ item: month }) => (
+          <View>
+            <Text style={[styles.monthTitle, { color: themeColor }]}>
+              {month}
+            </Text>
 
-            {/* CARD */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
-            </View>
+            {groupByMonth[month].map((reminder) => (
+              <TouchableOpacity
+                key={reminder.id}
+                style={[
+                  styles.card,
+                  { backgroundColor: "#F7F2F0" },
+                ]}
+                onPress={() => setSelected(reminder)}
+              >
+                <View
+                  style={[
+                    styles.dayCircle,
+                    { backgroundColor: themeColor },
+                  ]}
+                >
+                  <Text style={styles.dayText}>{reminder.day}</Text>
+                </View>
 
-            {/* BOTÓN COMPLETE */}
-            <TouchableOpacity style={styles.completeButton}>
-              <Text style={styles.completeButtonText}>Complete</Text>
-            </TouchableOpacity>
+                <View style={styles.info}>
+                  <Text style={[styles.cardTitle, { color: themeColor }]}>
+                    {reminder.title}
+                  </Text>
+                  <Text style={[styles.cardSub, { color: themeColor + "88" }]}>
+                    {reminder.note}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.completeBtn,
+                    { borderColor: themeColor },
+                  ]}
+                  onPress={() => handleComplete(reminder.id)}
+                >
+                  <Text style={[styles.completeText, { color: themeColor }]}>
+                    Complete
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            ))}
           </View>
         )}
       />
 
-      {/* BOTÓN FLOTANTE */}
-      <TouchableOpacity style={styles.fab}>
-        <Ionicons name="add" size={40} color="#A54230" />
+      {/* ---------- BOTÓN "+" ---------- */}
+      <TouchableOpacity onPress={() => navigation.navigate("AddReminder")}>
+        <Icon name="add" size={45} color={themeColor} />
       </TouchableOpacity>
     </View>
   );
 }
 
-// 🎨 ESTILOS COPIANDO EL LOOK DE TU IMAGEN
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 50,
-    paddingHorizontal: 18,
-  },
+  container: { flex: 1, padding: 15 },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 15,
+    paddingHorizontal: 10,
   },
 
-  editText: {
-    color: "#A54230",
-    fontSize: 16,
-  },
+  editText: { fontSize: 16, fontWeight: "600" },
 
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#5A2010",
-  },
+  title: { fontSize: 22, fontWeight: "700" },
 
   searchContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 20,
+    backgroundColor: "#F1F1F1",
+    borderRadius: 15,
     paddingVertical: 8,
-    marginBottom: 10,
-  },
-
-  searchInput: {
-    flex: 1,
-    paddingHorizontal: 10,
-    fontSize: 16,
-    color: "#333",
-  },
-
-  monthText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#5A2010",
-    marginVertical: 8,
-    alignSelf: "center",
-  },
-
-  itemContainer: {
-    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: 20,
+  },
+
+  searchInput: { marginLeft: 10, flex: 1, fontSize: 16 },
+
+  monthTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 10,
+    marginTop: 10,
+  },
+
+  card: {
+    flexDirection: "row",
+    padding: 12,
+    borderRadius: 15,
+    alignItems: "center",
+    marginBottom: 15,
   },
 
   dayCircle: {
     width: 55,
     height: 55,
     borderRadius: 30,
-    backgroundColor: "#5A2010",
     justifyContent: "center",
     alignItems: "center",
   },
 
-  dayText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 22,
-  },
+  dayText: { fontSize: 22, color: "white", fontWeight: "700" },
 
-  card: {
-    backgroundColor: "#F8F2EF",
-    flex: 1,
-    padding: 12,
-    marginHorizontal: 10,
-    borderRadius: 12,
-  },
+  info: { flex: 1, marginLeft: 15 },
 
-  cardTitle: {
-    fontSize: 16,
-    color: "#5A2010",
-    fontWeight: "600",
-  },
+  cardTitle: { fontSize: 16, fontWeight: "700" },
 
-  cardSubtitle: {
-    fontSize: 12,
-    color: "#A54230",
-    marginTop: 2,
-  },
+  cardSub: { fontSize: 14 },
 
-  completeButton: {
+  completeBtn: {
     borderWidth: 1,
-    borderColor: "#A54230",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
   },
 
-  completeButtonText: {
-    color: "#A54230",
+  completeText: { fontWeight: "600" },
+
+  modalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modalBox: {
+    backgroundColor: "white",
+    padding: 25,
+    borderRadius: 20,
+    width: "80%",
+    elevation: 10,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+
+  modalText: { fontSize: 16, color: "#333", marginBottom: 10 },
+
+  modalDate: { fontSize: 16, fontWeight: "600" },
+
+  closeBtn: {
+    marginTop: 20,
+    padding: 10,
+    borderRadius: 10,
+  },
+
+  closeText: {
+    color: "white",
+    textAlign: "center",
     fontWeight: "600",
-  },
-
-  fab: {
-    position: "absolute",
-    bottom: 25,
-    alignSelf: "center",
   },
 });

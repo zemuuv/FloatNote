@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ThemeProvider, useTheme } from "./Services/ThemeContext";
 import JournalScreen from "./Screens/JournalScreen";
 import AddEntryScreen from "./Screens/AddEntryScreen";
+import AddReminderScreen from "./Screens/AddReminderScreen";
 
 
 const Stack = createNativeStackNavigator();
@@ -31,6 +32,7 @@ function RemindersStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="RemindersMain" component={RemindersScreen} />
+      <Stack.Screen name="AddReminder" component={AddReminderScreen} />
     </Stack.Navigator>
   );
 }
